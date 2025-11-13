@@ -1,5 +1,25 @@
 import { db } from '../db/db.js';
 import { Product } from '../models/product.js';
+import { socket } from '../socket/clientUpdate.js';
+
+let changeStream = null;
+const watchProducts = async () => {
+  changeStream = await db.watchCollection(db.PRODUCTS, (change) => {
+    console.log('change', change);
+    if (change.operationType === 'update') {
+      socket.updateProduct(
+        change.documentKey._id.toString(), 
+        change.updateDescription.updatedFields 
+      );
+    }
+  });
+  console.log('watching products');
+}
+
+const stopWatchingProducts = async (changeStream) => {
+  await db.stopWatchingCollection(changeStream);
+  changeStream = null;
+}
 
 const getAll = async () => {
   const productDocs = await db.getAllInCollection(db.PRODUCTS);
@@ -26,9 +46,20 @@ const deleteIt = async (id) => {
   return { deletedCount };
 }
 
+const update = async (id, productInfo) => {
+  await db.updateInCollectionById(db.PRODUCTS, id, productInfo);
+  return {
+    id: id.toString(),
+    ...productInfo
+  }
+}
+
 export const productService = {
+  watchProducts,
+  stopWatchingProducts,
   getAll, 
   getById,
   add,
-  deleteIt
+  deleteIt,
+  update
 }

@@ -1,13 +1,27 @@
-import React, { useState } from "react";
-import "./styles.css"; // 
+import React, { useEffect, useState } from "react";
+import io from 'socket.io-client';
 
-import large_green_bowl from  './assets/large_green_bowl.jpg'
-import large_white_bowl from  './assets/large_white_bowl.jpg'
+import "./styles.css"; 
+
+import { getAllProducts, addProduct, updateProduct } from "./api/products";
+import ProductCard from "./components/ProductCard";
+import AddBowlForm from "./components/AddBowlForm";
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:6790';
+const IMG_BASE_URL = `${API_BASE_URL}/images/`;
+
+const IMG_FILE_NAMES = [
+  'large_green_bowl.jpg',
+  'large_white_bowl.jpg',
+  'shallow_green_bowl.jpg',
+  'shallow_jade_bowl.jpg',
+  'small_blue_pattern_bowl.jpg',
+];
 
 const initBowls = [
   {
     name: "Big Green Bowl",
-    image: large_green_bowl,
+    image: 'large_green_bowl.jpg',
     diameter: '9"',
     depth: '4.5"',
     material: "Glazed Ceramic",
@@ -17,7 +31,7 @@ const initBowls = [
   },
   {
     name: "Big White Bowl",
-    image: large_white_bowl,
+    image: 'large_white_bowl.jpg',
     diameter: '7.5"',
     depth: '4.5"',
     material: "Plant-based plastic",
@@ -26,38 +40,6 @@ const initBowls = [
     stock: 36,
   },
 ];
-
-function ProductCard({ bowl, isLoggedIn, onReturnToStock }) {
-
-  return (
-    <div className="product-card">
-      <img src={bowl.image} alt={bowl.name} className="product-image" />
-      <div className="product-info">
-        <h2 className="product-title">{bowl.name}</h2>
-        <ul className="product-details">
-          <li><strong>Diameter:</strong> {bowl.diameter}</li>
-          <li><strong>Depth:</strong> {bowl.depth}</li>
-          <li><strong>Material:</strong> {bowl.material}</li>
-          <li><strong>Color:</strong> {bowl.color}</li>
-          <li><strong>Price:</strong> {bowl.price}</li>
-          <li><strong>In Stock:</strong> {bowl.stock}</li>
-        </ul>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-          <button className="buy-button">Buy Now!</button>
-          {isLoggedIn && (
-            <button 
-              className="buy-button"
-              onClick={() => onReturnToStock(bowl)}
-              style={{ backgroundColor: '#90EE90' }}
-            >
-              Return to Stock
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function App() {
   const [bowls, setBowls] = useState(initBowls);
@@ -73,14 +55,49 @@ export default function App() {
     stock: '',
   });
 
+  useEffect(() => {
+    const fetchBowls = async () => {
+      let bowls = await getAllProducts();
+      bowls = bowls.map(bowl => ({
+        ...bowl,
+      }));
+      setBowls(bowls);
+    };
+    fetchBowls();
+    const socket = io(API_BASE_URL);
+    socket.on('updateProduct', (productId, updatedFields) => {
+      console.log('updateProduct', productId, updatedFields);
+      setBowls(bowls => bowls.map(b => 
+        b.id === productId ? { ...b, ...updatedFields } : b
+      ));
+    });
+  }, []);
+
   const handleAuthClick = () => {
     setIsLoggedIn(!isLoggedIn);
   };
 
-  const handleReturnToStock = (bowl) => {
-    setBowls(bowls.map(b => 
-      b === bowl ? { ...b, stock: b.stock + 1 } : b
-    ));
+  const handleBuy = async (bowl) => {
+    try {
+      await updateProduct(bowl.id, { stock: bowl.stock - 1 });
+      console.log('updated bowl', bowl.id);
+      // setBowls(bowls.map(b => 
+      //   b.id === bowl.id ? { ...b, stock: b.stock - 1 } : b
+      // ));
+    } catch (error) {
+      console.error('Failed to buy bowl', error);
+    }
+  };
+
+  const handleReturnToStock = async (bowl) => { 
+    try {
+      await updateProduct(bowl.id, { stock: bowl.stock + 1 });
+      // setBowls(bowls.map(b => 
+      //   b.id === bowl.id ? { ...b, stock: b.stock + 1 } : b
+      // ));
+    } catch (error) {
+      console.error('Failed to return bowl to stock', error);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -88,41 +105,40 @@ export default function App() {
     setNewBowl({ ...newBowl, [name]: value });
   };
 
-  const handleAddBowl = (e) => {
+  const handleAddBowl = async (e) => {
     e.preventDefault();
     const bowlToAdd = {
       ...newBowl,
-      stock: parseInt(newBowl.stock) || 0,
+      image: newBowl.image ? `${IMG_BASE_URL}${newBowl.image}` : '',
+      stock: parseInt(newBowl.stock, 10) || 0,
     };
-    setBowls([...bowls, bowlToAdd]);
-    setNewBowl({
-      name: '',
-      image: '',
-      diameter: '',
-      depth: '',
-      material: '',
-      color: '',
-      price: '',
-      stock: '',
-    });
+    try {
+      await addProduct(bowlToAdd);
+      setBowls([...bowls, bowlToAdd]);
+      setNewBowl({
+        name: '',
+        image: '',
+        diameter: '',
+        depth: '',
+        material: '',
+        color: '',
+        price: '',
+        stock: '',
+      });
+    } catch (error) {
+      console.error('Failed to add bowl', error);
+    }
   };
 
   return (
     <main className="container">
-      <header style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', position: 'relative' }}>
-        <div style={{ flex: 1 }}></div>
-        <h1 className="site-title" style={{ flex: 1, textAlign: 'center' }}>Just Bowls</h1>
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+      <header className="site-header">
+        <div className="header-spacer" />
+        <h1 className="site-title header-title">Just Bowls</h1>
+        <div className="header-actions">
           <button 
             onClick={handleAuthClick}
-            style={{
-              padding: '8px 16px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              backgroundColor: '#fff'
-            }}
+            className="auth-button"
           >
             {isLoggedIn ? 'Logout' : 'Login'}
           </button>
@@ -133,121 +149,17 @@ export default function App() {
           key={index} 
           bowl={bowl} 
           isLoggedIn={isLoggedIn}
+          onBuy={handleBuy}
           onReturnToStock={handleReturnToStock}
         />
       ))}
       {isLoggedIn && (
-        <form 
+        <AddBowlForm
+          newBowl={newBowl}
+          imgFileNames={IMG_FILE_NAMES}
+          onChange={handleInputChange}
           onSubmit={handleAddBowl}
-          style={{
-            marginTop: '40px',
-            padding: '20px',
-            border: '2px solid #ccc',
-            borderRadius: '8px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '15px'
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>Add New Bowl</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <label>
-              Name:
-              <input
-                type="text"
-                name="name"
-                value={newBowl.name}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Image URL:
-              <input
-                type="text"
-                name="image"
-                value={newBowl.image}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Diameter:
-              <input
-                type="text"
-                name="diameter"
-                value={newBowl.diameter}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Depth:
-              <input
-                type="text"
-                name="depth"
-                value={newBowl.depth}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Material:
-              <input
-                type="text"
-                name="material"
-                value={newBowl.material}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Color:
-              <input
-                type="text"
-                name="color"
-                value={newBowl.color}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Price:
-              <input
-                type="text"
-                name="price"
-                value={newBowl.price}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-            <label>
-              Stock:
-              <input
-                type="number"
-                name="stock"
-                value={newBowl.stock}
-                onChange={handleInputChange}
-                required
-                style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              />
-            </label>
-          </div>
-          <button 
-            type="submit"
-            className="buy-button"
-            style={{ alignSelf: 'flex-start' }}
-          >
-            Add Bowl
-          </button>
-        </form>
+        />
       )}
     </main>
   );
