@@ -1,15 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import "./styles.css"; 
 
-import { getAllProducts, IMG_FILE_NAMES } from "./api/products";
+import { 
+  getAllProducts, 
+  addProduct, 
+  updateProduct, 
+  IMG_FILE_NAMES 
+} from "./api/products";
 import ProductCard from "./components/ProductCard";
 import AddBowlForm from "./components/AddBowlForm";
 
 export default function App() {
-  const initBowls = getAllProducts();
 
-  const [bowls, setBowls] = useState(initBowls);
+  const [bowls, setBowls] = useState([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [newBowl, setNewBowl] = useState({
     name: '',
@@ -22,15 +26,34 @@ export default function App() {
     stock: '',
   });
 
+  useEffect(() => {
+    const fetchBowls = async () => {
+      let bowls = await getAllProducts();
+      bowls = bowls.map(bowl => ({
+        ...bowl,
+      }));
+      setBowls(bowls);
+    };
+    fetchBowls();
+  }, []);
+
   const handleAuthClick = () => {
     setIsLoggedIn(!isLoggedIn);
   };
 
   const handleBuy = async (bowl) => {
     try {
-      setBowls(bowls.map(b => 
-        b.id === bowl.id ? { ...b, stock: Math.max(0, b.stock - 1) } : b
-      ));
+      const updated = await updateProduct(
+        bowl.id, 
+        { stock: bowl.stock - 1 }
+      );  
+      if (updated) {
+        setBowls(bowls => bowls.map(b => 
+          b.id === bowl.id ? { ...b, stock: Math.max(0, b.stock - 1) } : b
+        ));
+      } else {
+        console.error('Failed to buy bowl, stock not updated');
+      }
     } catch (error) {
       console.error('Failed to buy bowl', error);
     }
@@ -38,9 +61,17 @@ export default function App() {
 
   const handleReturnToStock = async (bowl) => { 
     try {
-      setBowls(bowls.map(b => 
-        b.id === bowl.id ? { ...b, stock: b.stock + 1 } : b
-      ));
+      const updated = await updateProduct(
+        bowl.id, 
+        { stock: bowl.stock + 1 }
+      );  
+      if (updated) {
+        setBowls(bowls => bowls.map(b => 
+          b.id === bowl.id ? { ...b, stock: b.stock + 1 } : b
+        ));
+      } else {
+        console.error('Failed to return bowl to stock, stock not updated');
+      }
     } catch (error) {
       console.error('Failed to return bowl to stock', error);
     }
@@ -53,22 +84,28 @@ export default function App() {
 
   const handleAddBowl = async (e) => {
     e.preventDefault();
-    const bowlToAdd = {
-      ...newBowl,
-      id: Date.now(),
-      stock: parseInt(newBowl.stock, 10) || 0,
-    };
-    setBowls([...bowls, bowlToAdd]);
-    setNewBowl({
-      name: '',
-      image: '',
-      diameter: '',
-      depth: '',
-      material: '',
-      color: '',
-      price: '',
-      stock: '',
-    });
+    try {    
+      const bowlToAdd = {
+        ...newBowl,
+        stock: parseInt(newBowl.stock, 10) || 0,
+      };
+      bowlToAdd.id = await addProduct(bowlToAdd);
+      setBowls([...bowls, bowlToAdd ]);
+      setNewBowl({
+        name: '',
+        image: '',
+        diameter: '',
+        depth: '',
+        material: '',
+        color: '',
+        price: '',
+        stock: '',
+      });
+    } catch (error) {
+      console.error('Failed to add bowl', error);
+    }
+
+
   };
 
   return (
