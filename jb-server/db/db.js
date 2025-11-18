@@ -20,21 +20,6 @@ const close = async () => {
   await mongoClient.close();
 }
 
-const watchCollection = async (collectionName, callback = () => {}) => {
-  if (!mongoClient) { await init(); }
-  const changeStream = await theDb.collection(collectionName).watch();
-  changeStream.on('change', (change) => {
-    console.log(change);
-    callback(change);
-  });
-  console.log('watching collection', collectionName);
-  return changeStream;
-}
-
-const stopWatchingCollection = async (changeStream) => {
-  changeStream.close();
-}
-
 const getAllInCollection = async (collectionName) => {
   if (!mongoClient) { await init(); }
   const allDocs = await theDb.collection(collectionName).find();
@@ -72,8 +57,6 @@ const updateInCollectionById = async (collectionName, id, docData) => {
 export const db = {
   init, 
   close,
-  watchCollection,
-  stopWatchingCollection,
   getAllInCollection, 
   getFromCollectionById,
   addToCollection,

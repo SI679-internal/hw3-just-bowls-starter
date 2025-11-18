@@ -4,7 +4,7 @@ export default function ProductCard({ bowl, isLoggedIn, onBuy, onReturnToStock }
 
   return (
     <div className="product-card">
-      <img src={bowl.image} alt={bowl.name} className="product-image" />
+      <img src={require(`../assets/${bowl.image}`)} alt={bowl.name} className="product-image" />
       <div className="product-info">
         <h2 className="product-title">{bowl.name}</h2>
         <ul className="product-details">
