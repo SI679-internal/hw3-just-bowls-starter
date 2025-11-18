@@ -1,5 +1,26 @@
 import { db } from '../db/db.js';
 import { Product } from '../models/product.js';
+import { socket } from '../socket/clientUpdate.js';
+
+let changeStream = null;
+const watchProducts = async () => {
+  const callback = (change) => {
+    if (change.operationType === 'update') {
+      console.log('change', change.updateDescription.updatedFields);
+      socket.updateProduct(
+        change.documentKey._id.toString(), 
+        change.updateDescription.updatedFields 
+      );
+    }
+  };
+  changeStream = await db.watchCollection(db.PRODUCTS, callback);
+  console.log('watching products');
+}
+
+const stopWatchingProducts = async () => {
+  await db.closeChangeStream(changeStream);
+  changeStream = null;
+}
 
 const getAll = async () => {
   const productDocs = await db.getAllInCollection(db.PRODUCTS);
@@ -35,6 +56,8 @@ const update = async (id, productInfo) => {
 }
 
 export const productService = {
+  watchProducts,
+  stopWatchingProducts,
   getAll, 
   getById,
   add,

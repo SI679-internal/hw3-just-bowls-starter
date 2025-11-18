@@ -1,10 +1,15 @@
 import React from 'react';
+import { IMG_BASE_URL } from '../api/apiClient';
 
 export default function ProductCard({ bowl, isLoggedIn, onBuy, onReturnToStock }) {
 
   return (
     <div className="product-card">
-      <img src={require(`../assets/${bowl.image}`)} alt={bowl.name} className="product-image" />
+      <img 
+        src={`${IMG_BASE_URL}${bowl.image}`} 
+        alt={bowl.name} 
+        className="product-image" 
+      />
       <div className="product-info">
         <h2 className="product-title">{bowl.name}</h2>
         <ul className="product-details">

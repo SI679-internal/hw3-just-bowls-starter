@@ -1,3 +1,5 @@
+import { handleGet, handlePost, handlePatch, PRODUCTS_ENDPOINT } from './apiClient';
+
 const IMG_FILE_NAMES = [
   'large_green_bowl.jpg',
   'large_white_bowl.jpg',
@@ -32,8 +34,20 @@ const initBowls = [
 ];
 
 const getAllProducts = () => {
-  return initBowls;
+  return handleGet(PRODUCTS_ENDPOINT);
 }
 
+const addProduct = async (product) => {
+  const response = await handlePost(PRODUCTS_ENDPOINT, product);
+  return response.id;
+}
 
-export { getAllProducts, IMG_FILE_NAMES };
+const updateProduct = async (id, fieldsToUpdate) => {
+  const updatedProduct = await handlePatch(`${PRODUCTS_ENDPOINT}/${id}`, fieldsToUpdate);
+  if (!updatedProduct) {
+    throw new Error('Failed to update product');
+  }
+  return updatedProduct;
+}
+
+export { getAllProducts, addProduct, updateProduct, IMG_FILE_NAMES };
