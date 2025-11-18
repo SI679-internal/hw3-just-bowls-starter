@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import io from 'socket.io-client';
 
 import "./styles.css"; 
 
@@ -10,6 +11,7 @@ import {
 } from "./api/products";
 import ProductCard from "./components/ProductCard";
 import AddBowlForm from "./components/AddBowlForm";
+import { API_URL } from "./api/apiClient";
 
 export default function App() {
 
@@ -35,6 +37,13 @@ export default function App() {
       setBowls(bowls);
     };
     fetchBowls();
+    const socket = io(API_URL);
+    socket.on('updateProduct', (productId, updatedFields) => {
+      console.log('updateProduct received', productId, updatedFields);
+      setBowls(bowls => bowls.map(b => 
+        b.id === productId ? { ...b, ...updatedFields } : b
+      ));
+    });
   }, []);
 
   const handleAuthClick = () => {
@@ -43,17 +52,10 @@ export default function App() {
 
   const handleBuy = async (bowl) => {
     try {
-      const updated = await updateProduct(
+      await updateProduct(
         bowl.id, 
         { stock: bowl.stock - 1 }
       );  
-      if (updated) {
-        setBowls(bowls => bowls.map(b => 
-          b.id === bowl.id ? { ...b, stock: Math.max(0, b.stock - 1) } : b
-        ));
-      } else {
-        console.error('Failed to buy bowl, stock not updated');
-      }
     } catch (error) {
       console.error('Failed to buy bowl', error);
     }
@@ -61,17 +63,10 @@ export default function App() {
 
   const handleReturnToStock = async (bowl) => { 
     try {
-      const updated = await updateProduct(
+      await updateProduct(
         bowl.id, 
         { stock: bowl.stock + 1 }
       );  
-      if (updated) {
-        setBowls(bowls => bowls.map(b => 
-          b.id === bowl.id ? { ...b, stock: b.stock + 1 } : b
-        ));
-      } else {
-        console.error('Failed to return bowl to stock, stock not updated');
-      }
     } catch (error) {
       console.error('Failed to return bowl to stock', error);
     }
