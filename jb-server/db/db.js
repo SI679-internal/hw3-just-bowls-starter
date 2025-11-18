@@ -44,6 +44,16 @@ const addToCollection = async (collectionName, docData) => {
   return result;
 }
 
+const updateInCollectionById = async (collectionName, id, docData) => {
+  if (!mongoClient) { await init(); }
+  const result = 
+    await theDb.collection(collectionName).updateOne(
+      {_id: new ObjectId(String(id))}, 
+      {$set: docData}
+    );
+  return result;
+}
+
 export const db = {
   init, 
   close,
@@ -51,6 +61,7 @@ export const db = {
   getFromCollectionById,
   addToCollection,
   deleteFromCollectionById,
+  updateInCollectionById,
   PRODUCTS,
   ORDERS
 }

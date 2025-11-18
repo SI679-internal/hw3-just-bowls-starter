@@ -26,9 +26,18 @@ const deleteIt = async (id) => {
   return { deletedCount };
 }
 
+const update = async (id, productInfo) => {
+  await db.updateInCollectionById(db.PRODUCTS, id, productInfo);
+  return {
+    id: id.toString(),
+    ...productInfo
+  }
+}
+
 export const productService = {
   getAll, 
   getById,
   add,
-  deleteIt
+  deleteIt,
+  update
 }

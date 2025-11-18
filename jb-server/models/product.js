@@ -1,12 +1,14 @@
 
 class Product {
   id = '';
-  modelNumber = '';
-  modelName = '';
-  manufacturer = '';
+  name = '';
+  image = '';
+  diameter = '';
+  depth = '';
+  material = '';
   color = '';
   price = 0.0;
-  quantity = 0;
+  stock = 0;
 
   constructor(productFields) {
     const id = productFields.id ?? String(Date.now());
@@ -15,12 +17,14 @@ class Product {
 
   updateProperties = (productFields) => {
     this.id = productFields.id ?? this.id;
-    this.modelName = productFields.modelName ?? this.modelName;
-    this.modelNumber = productFields.modelNumber ?? this.modelNumber;
-    this.manufacturer = productFields.manufacturer ?? this.manufacturer;
-    this.price = productFields.price ?? this.price;
+    this.name = productFields.name ?? this.name;
+    this.image = productFields.image ?? this.image;
+    this.diameter = productFields.diameter ?? this.diameter;
+    this.depth = productFields.depth ?? this.depth;
+    this.material = productFields.material ?? this.material;
     this.color = productFields.color ?? this.color; 
-    this.quantity = productFields.quantity ?? this.quantity;
+    this.price = productFields.price ?? this.price;
+    this.stock = productFields.stock ?? this.stock;
   }
 
   static fromProductDocument = (productDocument) => {
